@@ -1,0 +1,15 @@
+version: "3"
+services:
+  master_node:
+    container_name: master_node
+    build: .
+    command: 'uvicorn app.run_master:app --host 0.0.0.0 --port 8000'
+    ports:
+      - 8000:8000
+
+  secondary_node_1:
+    container_name: secondary_node_1
+    build: .
+    command: 'uvicorn app.run_secondary:app --host 0.0.0.0 --port 8001'
+    expose:
+      - 8001
