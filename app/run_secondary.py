@@ -1,36 +1,32 @@
-from typing import Union
-
 from fastapi import FastAPI
-from pydantic import BaseModel
 
 from app.config import logger
-
-
-class LogMessage(BaseModel):
-    message: str
-    log_counter: Union[int, None] = None
-
+from app.utils import LogMessage
 
 app = FastAPI()
 logs = []
-log_counter = 1
 
 
 @app.get("/logs")
 async def get_all_logs():
-    return {
-        'logs': logs
-    }
+    logs_to_return = []
+    for index, log in enumerate(logs):
+
+        # check if the message order in the list matches the order messages have been sent in
+        if log.log_counter == index + 1:
+            logs_to_return.append(log)
+        else:
+            # break in case we miss some message
+            break
+
+    logger.info(f'Returning logs: {logs}')
+    return logs_to_return
 
 
 @app.post("/append")
 async def append_log(log_message: LogMessage):
     logger.info(f'Received a new log: {log_message}')
 
-    global log_counter
-    log_message.log_counter = log_counter
-    logs.append(log_message)
-    log_counter += 1
-    logger.info(f'Adding the log: {log_message}')
-    logger.info(f'Logs list: {logs}')
+    # insert the log into the list by message's counter to make sure we keep the same order as on the Master node
+    logs.insert(int(log_message.log_counter) - 1, log_message)
     return {'status': 'Ok'}

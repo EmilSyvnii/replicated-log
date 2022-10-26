@@ -1,17 +1,7 @@
-import json
-from typing import Union
-
-import requests
 from fastapi import FastAPI
-from pydantic import BaseModel
 
-from app.config import logger
-
-
-class LogMessage(BaseModel):
-    message: str
-    log_counter: Union[int, None] = None
-
+from app.log_replication import replicate_logs, get_logs_from_secondary
+from app.utils import LogMessage
 
 app = FastAPI()
 logs = []
@@ -20,9 +10,11 @@ log_counter = 1
 
 @app.get("/logs")
 async def get_all_logs():
-    return {
-        'logs': logs
-    }
+    all_logs = {'master_logs': logs}
+    logs_from_secs = await get_logs_from_secondary()
+    for secondary in logs_from_secs:
+        all_logs.update(secondary)
+    return all_logs
 
 
 @app.post("/append")
@@ -33,14 +25,3 @@ async def append_log(log_message: LogMessage):
     log_counter += 1
     await replicate_logs(log_message)
     return {'status': 'Ok'}
-
-
-async def replicate_logs(log_message: LogMessage):
-    logger.info(f'Replicating log {log_message}')
-    post_data = log_message.dict()
-    logger.info(f'Post_data: {post_data}, type {type(post_data)}')
-    response = requests.post(
-        url='http://secondary_node_1:8001/append',
-        data=json.dumps(post_data),
-    )
-    logger.info(f'Response status: {response.status_code}, message: {response.text}')
