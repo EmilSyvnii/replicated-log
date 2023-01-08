@@ -1,27 +1,53 @@
 from fastapi import FastAPI
 
-from app.log_replication import replicate_logs, get_logs_from_secondary
-from app.utils import LogMessage
+from app.log_replication import (
+    replicate_logs,
+    get_logs_from_secondary,
+    replicate_logs_wait,
+    get_replicated_logs,
+)
+from app.utils import LogMessage, AiohttpClient
+from app.config import logger
 
-app = FastAPI()
-logs = []
+app = FastAPI(docs_url="/")
+master_logs = []
 log_counter = 1
+
+
+@app.on_event("startup")
+async def on_startup() -> None:
+    logger.info('Starting Aiohttp Client')
+    AiohttpClient.get_aiohttp_session()
+
+
+@app.on_event("shutdown")
+async def on_shutdown() -> None:
+    logger.info('Shutting Aiohttp Client')
+    await AiohttpClient.close_aiohttp_session()
 
 
 @app.get("/logs")
 async def get_all_logs():
-    all_logs = {'master_logs': logs}
     logs_from_secs = await get_logs_from_secondary()
-    for secondary in logs_from_secs:
-        all_logs.update(secondary)
-    return all_logs
+    replicated_logs = get_replicated_logs(master_logs, logs_from_secs)
+    return replicated_logs
 
 
 @app.post("/append")
 async def append_log(log_message: LogMessage):
     global log_counter
     log_message.log_counter = log_counter
-    logs.append(log_message)
+    master_logs.append(log_message)
     log_counter += 1
     await replicate_logs(log_message)
+    return {'status': 'Ok'}
+
+
+@app.post("/append_with_wc")
+async def append_log_with_wc(log_message: LogMessage):
+    global log_counter
+    log_message.log_counter = log_counter
+    master_logs.append(log_message)
+    log_counter += 1
+    await replicate_logs_wait(log_message)
     return {'status': 'Ok'}
