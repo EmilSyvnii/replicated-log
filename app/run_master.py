@@ -3,7 +3,6 @@ from fastapi import FastAPI
 from app.log_replication import (
     replicate_logs,
     get_logs_from_secondary,
-    replicate_logs_wait,
     get_replicated_logs,
 )
 from app.utils import LogMessage, AiohttpClient
@@ -34,20 +33,10 @@ async def get_all_logs():
 
 
 @app.post("/append")
-async def append_log(log_message: LogMessage):
-    global log_counter
-    log_message.log_counter = log_counter
-    master_logs.append(log_message)
-    log_counter += 1
-    await replicate_logs(log_message)
-    return {'status': 'Ok'}
-
-
-@app.post("/append_with_wc")
 async def append_log_with_wc(log_message: LogMessage):
     global log_counter
     log_message.log_counter = log_counter
     master_logs.append(log_message)
     log_counter += 1
-    await replicate_logs_wait(log_message)
+    await replicate_logs(log_message)
     return {'status': 'Ok'}

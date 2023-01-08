@@ -14,19 +14,6 @@ secondary_nodes_urls = [
 
 async def replicate_logs(log_message: LogMessage):
     logger.info(f'Replicating log {log_message}')
-    post_data = json.dumps(log_message.dict())   # check if it is needed to convert to dict and back to json
-    tasks = []
-    for url in secondary_nodes_urls:
-        request_url = url.format(path='append')
-        tasks.append(send_log(AiohttpClient.aiohttp_session, post_data, request_url))
-    results = await asyncio.gather(*tasks)
-    for response in results:
-        logger.info(f'Response {response.status}')
-    return
-
-
-async def replicate_logs_wait(log_message: LogMessage):
-    logger.info(f'Replicating log {log_message}')
     write_concern = log_message.write_concern
     if write_concern not in (1, 2, 3):
         logger.info(f'Invalid write concern value: {write_concern}')
