@@ -10,6 +10,7 @@ SLEEP_FOR = os.environ.get('SLEEP_FOR')
 
 app = FastAPI()
 logs = []
+received_message_uuids = []     # save every received message UUID to avoid duplications after retries
 
 
 @app.get("/logs")
@@ -21,7 +22,7 @@ async def get_all_logs():
         if log.log_counter == index + 1:
             logs_to_return.append(log)
         else:
-            # break in case we miss some message
+            # break in case we miss a message
             break
 
     logger.info(f'Returning logs: {logs}')
@@ -35,7 +36,17 @@ async def append_log(log_message: LogMessage):
         logger.info(f'Sleeping for: {SLEEP_FOR} secs')
         await asyncio.sleep(int(SLEEP_FOR))
 
-    # insert the log into the list by message's counter to make sure we keep the same order as on the Master node
-    logs.insert(int(log_message.log_counter) - 1, log_message)
-    logger.info(f'Done replicating log: {log_message}')
+    message_uuid = log_message.message_uuid
+    if message_uuid not in received_message_uuids:
+        # insert the log into the list by message's counter to make sure we keep the same order as on the Master node
+        logs.insert(int(log_message.log_counter) - 1, log_message)
+        received_message_uuids.append(message_uuid)
+        logger.info(f'Done replicating log: {log_message}')
+    else:
+        logger.info(f'Skip the log as it has already been replicated: {log_message}')
     return {'status': 'Ok'}
+
+
+@app.get("/health")
+async def check_heartbeat():
+    return 200

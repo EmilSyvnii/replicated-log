@@ -1,4 +1,6 @@
 import asyncio
+from enum import Enum
+
 import aiohttp
 from pydantic import BaseModel
 from typing import Union, Optional
@@ -12,6 +14,7 @@ class LogMessage(BaseModel):
     message: str
     log_counter: Union[int, None] = None
     write_concern: Union[int, None] = None
+    message_uuid: Union[str, None] = None
 
 
 class AiohttpClient:
@@ -20,7 +23,8 @@ class AiohttpClient:
     @classmethod
     def get_aiohttp_session(cls) -> aiohttp.ClientSession:
         if cls.aiohttp_session is None:
-            cls.aiohttp_session = aiohttp.ClientSession()
+            session_timeout = aiohttp.ClientTimeout(total=3)
+            cls.aiohttp_session = aiohttp.ClientSession(timeout=session_timeout)
         return cls.aiohttp_session
 
     @classmethod
@@ -28,3 +32,9 @@ class AiohttpClient:
         if cls.aiohttp_session:
             await cls.aiohttp_session.close()
             cls.aiohttp_session = None
+
+
+class NodeState(Enum):
+    HEALTHY = 1
+    SUSPECTED = 2
+    UNHEALTHY = 3

@@ -5,27 +5,26 @@ services:
     build: .
     container_name: master_node
     command: 'uvicorn app.run_master:app --host 0.0.0.0 --port 8000'
+    depends_on:
+      - secondary_node_1
+      - secondary_node_2
     ports:
-      - 8000:8000
+      - '8000:8000'
 
   secondary_node_1:
     container_name: secondary_node_1
     image: replicated-logs-app
     command: 'uvicorn app.run_secondary:app --host 0.0.0.0 --port 8001'
-    environment:
-      SLEEP_FOR: 10
-    depends_on:
-      - master_node
+#    environment:
+#      SLEEP_FOR: 10
     expose:
-      - 8001
+      - '8001'
 
   secondary_node_2:
     container_name: secondary_node_2
     image: replicated-logs-app
     command: 'uvicorn app.run_secondary:app --host 0.0.0.0 --port 8002'
-    environment:
-      SLEEP_FOR: 20
-    depends_on:
-      - master_node
+#    environment:
+#      SLEEP_FOR: 20
     expose:
-      - 8002
+      - '8002'
