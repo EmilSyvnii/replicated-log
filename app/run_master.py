@@ -1,9 +1,11 @@
+import asyncio
 from fastapi import FastAPI
 
 from app.log_replication import (
     replicate_logs,
     get_logs_from_secondary,
     get_replicated_logs,
+    run_heartbeat_checker,
 )
 from app.utils import LogMessage, AiohttpClient
 from app.config import logger
@@ -17,6 +19,8 @@ log_counter = 1
 async def on_startup() -> None:
     logger.info('Starting Aiohttp Client')
     AiohttpClient.get_aiohttp_session()
+
+    asyncio.create_task(run_heartbeat_checker())
 
 
 @app.on_event("shutdown")
@@ -33,7 +37,7 @@ async def get_all_logs():
 
 
 @app.post("/append")
-async def append_log_with_wc(log_message: LogMessage):
+async def append_log(log_message: LogMessage):
     global log_counter
     log_message.log_counter = log_counter
     master_logs.append(log_message)
